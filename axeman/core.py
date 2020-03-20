@@ -15,6 +15,7 @@ import aiohttp
 import aioprocessing
 import logging
 import locale
+import gzip
 
 try:
     locale.setlocale(locale.LC_ALL, 'en_US')
@@ -169,7 +170,7 @@ def process_worker(result_info):
         return
     try:
         csv_storage = result_info['log_dir']
-        csv_file = "{}/{}-{}.csv".format(csv_storage, result_info['start'], result_info['end'])
+        csv_file = "{}/{}-{}.csv.gz".format(csv_storage, result_info['start'], result_info['end'])
 
         lines = []
 
@@ -223,7 +224,7 @@ def process_worker(result_info):
 
         print("[{}] Finished, writing CSV...".format(os.getpid()))
 
-        with open(csv_file, 'w', encoding='utf8') as f:
+        with gzip.open(csv_file, 'wt', encoding='utf8') as f:
             f.write("".join(lines))
         print("[{}] CSV {} written!".format(os.getpid(), csv_file))
 
