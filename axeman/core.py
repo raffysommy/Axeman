@@ -1,8 +1,10 @@
 import argparse
 import asyncio
+import time
 from collections import deque
 
 import uvloop
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 import sys
@@ -25,7 +27,7 @@ except:
 from OpenSSL import crypto
 
 from . import certlib
-
+from . import avrolib
 DOWNLOAD_CONCURRENCY = 50
 MAX_QUEUE_SIZE = 1000
 
@@ -169,10 +171,10 @@ def process_worker(result_info):
     if not result_info:
         return
     try:
-        csv_storage = result_info['log_dir']
-        csv_file = "{}/{}-{}.csv.gz".format(csv_storage, result_info['start'], result_info['end'])
+        avro_storage = result_info['log_dir']
+        avro_file = "{}/{}-{}.avro".format(avro_storage, result_info['start'], result_info['end'])
 
-        lines = []
+        ctlog_lines = []
 
         print("[{}] Parsing...".format(os.getpid()))
         for entry in result_info['entries']:
@@ -197,36 +199,24 @@ def process_worker(result_info):
                     )
 
             cert_data.update({
-                "leaf_cert": certlib.dump_cert(chain[0]),
-                "chain": [certlib.dump_cert(x) for x in chain[1:]]
+                "leaf_cert": certlib.serialize_certificate(chain[0]),
+                "chain": [certlib.serialize_certificate(x) for x in chain[1:]],
+                "cert_index": entry['cert_index'],
+                "seen": time.time()
             })
 
             certlib.add_all_domains(cert_data)
 
             cert_data['source'] = {
                 "url": result_info['log_info']['url'],
+                "name": ''
             }
+            ctlog_lines.append(cert_data)
 
-            chain_hash = hashlib.sha256("".join([x['as_der'] for x in cert_data['chain']]).encode('ascii')).hexdigest()
+        print("[{}] Finished, writing Avro...".format(os.getpid()))
 
-            # header = "url, cert_index, chain_hash, cert_der, all_domains, not_before, not_after"
-            lines.append(
-                ",".join([
-                    result_info['log_info']['url'],
-                    str(entry['cert_index']),
-                    chain_hash,
-                    cert_data['leaf_cert']['as_der'],
-                    ' '.join(cert_data['leaf_cert']['all_domains']),
-                    str(cert_data['leaf_cert']['not_before']),
-                    str(cert_data['leaf_cert']['not_after'])
-                ]) + "\n"
-            )
-
-        print("[{}] Finished, writing CSV...".format(os.getpid()))
-
-        with gzip.open(csv_file, 'wt', encoding='utf8') as f:
-            f.write("".join(lines))
-        print("[{}] CSV {} written!".format(os.getpid(), csv_file))
+        avrolib.write_to_avro(avro_file, ctlog_lines)
+        print("[{}] Avro {} written!".format(os.getpid(), avro_file))
 
     except Exception as e:
         print("========= EXCEPTION =========")

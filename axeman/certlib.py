@@ -165,3 +165,29 @@ def dump_extensions(certificate):
             except Exception as e:
                 pass
     return extensions
+
+def serialize_certificate(certificate):
+    subject = certificate.get_subject()
+    not_before_datetime = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'), "%Y%m%d%H%M%SZ")
+    not_after_datetime = datetime.datetime.strptime(certificate.get_notAfter().decode('ascii'), "%Y%m%d%H%M%SZ")
+    return {
+        "subject": {
+            "aggregated": repr(certificate.get_subject())[18:-2],
+            "C": subject.C,
+            "ST": subject.ST,
+            "L": subject.L,
+            "O": subject.O,
+            "OU": subject.OU,
+            "CN": subject.CN
+        },
+        "extensions": dump_extensions(certificate),
+        "not_before": not_before_datetime.timestamp(),
+        "not_after": not_after_datetime.timestamp(),
+        "serial_number": '{0:x}'.format(int(certificate.get_serial_number())),
+        "fingerprint": str(certificate.digest("sha1"),'utf-8'),
+        "as_der": base64.b64encode(
+            crypto.dump_certificate(
+                crypto.FILETYPE_ASN1, certificate
+            )
+        ).decode('utf-8')
+    }
