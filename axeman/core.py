@@ -176,7 +176,7 @@ def process_worker(result_info):
 
         ctlog_lines = []
 
-        print("[{}] Parsing...".format(os.getpid()))
+        logging.debug("[{}] Parsing...".format(os.getpid()))
         for entry in result_info['entries']:
             mtl = certlib.MerkleTreeHeader.parse(base64.b64decode(entry['leaf_input']))
 
@@ -213,16 +213,16 @@ def process_worker(result_info):
             }
             ctlog_lines.append(cert_data)
 
-        print("[{}] Finished, writing Avro...".format(os.getpid()))
+        logging.debug("[{}] Finished, writing Avro...".format(os.getpid()))
 
         avrolib.write_to_avro(avro_file, ctlog_lines)
-        print("[{}] Avro {} written!".format(os.getpid(), avro_file))
+        logging.info("[{}] Avro {} written!".format(os.getpid(), avro_file))
 
     except Exception as e:
-        print("========= EXCEPTION =========")
+        logging.error("========= EXCEPTION =========")
         traceback.print_exc()
-        print(e)
-        print("=============================")
+        logging.error(e)
+        logging.error("=============================")
 
     return True
 
