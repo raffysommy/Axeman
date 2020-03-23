@@ -199,6 +199,6 @@ schema = {
 def write_to_avro(filename, records):
     parsed_schema = parse_schema(schema)
     with open(filename, 'wb') as out:
-        writer(out, parsed_schema, records, validator=True)
+        writer(fo=out, schema=parsed_schema, records=records, codec='deflate', validator=True, codec_compression_level=9)
 
 
