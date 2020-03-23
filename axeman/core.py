@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import time
+import pdb
 from collections import deque
 
 import uvloop
@@ -18,6 +19,9 @@ import aioprocessing
 import logging
 import locale
 import gzip
+
+import yaml
+from axeman.attrdict import AttrDict
 
 try:
     locale.setlocale(locale.LC_ALL, 'en_US')
@@ -176,7 +180,7 @@ def process_worker(result_info):
 
         ctlog_lines = []
 
-        print("[{}] Parsing...".format(os.getpid()))
+        logging.debug("[{}] Parsing...".format(os.getpid()))
         for entry in result_info['entries']:
             mtl = certlib.MerkleTreeHeader.parse(base64.b64decode(entry['leaf_input']))
 
@@ -213,16 +217,16 @@ def process_worker(result_info):
             }
             ctlog_lines.append(cert_data)
 
-        print("[{}] Finished, writing Avro...".format(os.getpid()))
+        logging.debug("[{}] Finished, writing Avro...".format(os.getpid()))
 
         avrolib.write_to_avro(avro_file, ctlog_lines)
-        print("[{}] Avro {} written!".format(os.getpid(), avro_file))
+        logging.info("[{}] Avro {} written!".format(os.getpid(), avro_file))
 
     except Exception as e:
-        print("========= EXCEPTION =========")
+        logging.error("========= EXCEPTION =========")
         traceback.print_exc()
-        print(e)
-        print("=============================")
+        logging.error(e)
+        logging.error("=============================")
 
     return True
 
@@ -245,28 +249,37 @@ async def get_certs_and_print():
 def main():
     loop = asyncio.get_event_loop()
 
-    parser = argparse.ArgumentParser(description='Pull down certificate transparency list information')
+    with open('config.yml', 'r') as config_file:
+        config = yaml.load(config_file, Loader=yaml.Loader)
 
-    parser.add_argument('-f', dest='log_file', action='store', default='/tmp/axeman.log',
+    parser = argparse.ArgumentParser(
+            description='Pull down certificate transparency list information')
+    parser.add_argument('-f', dest='log_file', action='store',
+                        default=None,
                         help='location for the axeman log file')
-
-    parser.add_argument('-s', dest='start_offset', action='store', default=0,
+    parser.add_argument('-s', dest='start_offset', action='store',
+                        default=None,
                         help='Skip N number of lists before starting')
-
-    parser.add_argument('-l', dest="list_mode", action="store_true", help="List all available certificate lists")
-
-    parser.add_argument('-u', dest="ctl_url", action="store", default=None, help="Retrieve this CTL only")
-
-    parser.add_argument('-z', dest="ctl_offset", action="store", default=0, help="The CTL offset to start at")
-
-    parser.add_argument('-o', dest="output_dir", action="store", default="/tmp", help="The output directory to store certificates in")
-
-    parser.add_argument('-v', dest="verbose", action="store_true", help="Print out verbose/debug info")
-
-    parser.add_argument('-c', dest='concurrency_count', action='store', default=50, type=int, help="The number of concurrent downloads to run at a time")
-
+    parser.add_argument('-l', dest="list_mode", action="store_true",
+                        help="List all available certificate lists")
+    parser.add_argument('-u', dest="ctl_url", action="store", default=None,
+                        help="Retrieve this CTL only")
+    parser.add_argument('-z', dest="ctl_offset", action="store", default=None,
+                        help="The CTL offset to start at")
+    parser.add_argument('-o', dest="output_dir", action="store", default=None,
+                        help="The output directory to store certificates in")
+    parser.add_argument('-v', dest="verbose", action="store_true",
+                        help="Print out verbose/debug info")
+    parser.add_argument('-c', dest='concurrency_count', action='store',
+                        default=None, type=int,
+                        help=("The number of concurrent downloads to run "
+                              "at a time"))
     args = parser.parse_args()
+    for key, value in args.__dict__.copy().items():
+        if value is not None:
+            config[key] = value
 
+    args = AttrDict(config)
     if args.list_mode:
         loop.run_until_complete(get_certs_and_print())
         return

@@ -1,0 +1,21 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+asyncio = "*"
+uvloop = "*"
+aiohttp = "*"
+aioprocessing = "*"
+construct = "==2.9.52"
+fastavro = "*"
+pyOpenSSL = "*"
+axeman = {path = "."}
+pylint = "*"
+pyyaml = "*"
+
+[requires]
+python_version = "3.7"

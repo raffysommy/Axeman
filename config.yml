@@ -1,0 +1,5 @@
+concurrency_count: 50
+ctl_offset: 0
+log_file: /tmp/axeman/axeman.log
+output_dir: /tmp/axeman
+start_offset: 0
