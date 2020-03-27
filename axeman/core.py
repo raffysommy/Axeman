@@ -19,6 +19,8 @@ import aioprocessing
 import logging
 import locale
 import gzip
+import time
+import random
 
 import yaml
 from axeman.attrdict import AttrDict
@@ -44,7 +46,7 @@ async def download_worker(session, log_info, work_deque, download_queue):
 
         logging.debug("[{}] Queueing up blocks {}-{}...".format(log_info['url'], start, end))
 
-        for x in range(3):
+        for x in range(10000):
             try:
                 async with session.get(certlib.DOWNLOAD.format(log_info['url'], start, end)) as response:
                     entry_list = await response.json()
@@ -52,9 +54,10 @@ async def download_worker(session, log_info, work_deque, download_queue):
                     break
             except Exception as e:
                 logging.error("Exception getting block {}-{}! {}".format(start, end, e))
+		time.sleep((2 ** x) + (random.randint(0, 1000) / 1000))
         else:  # Notorious for else, if we didn't encounter a break our request failed 3 times D:
             with open('/tmp/fails.csv', 'a') as f:
-                f.write(",".join([log_info['url'], str(start), str(end)]))
+                f.write(",".join([log_info['url'], str(start), str(end)])+"\n")
             return
 
         for index, entry in zip(range(start, end + 1), entry_list['entries']):
