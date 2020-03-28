@@ -103,10 +103,7 @@ schema = {
                                                     },
                                                     {
                                                         "name": "OU",
-                                                        "type": [
-                                                            ["null", "string"],
-                                                            "null"
-                                                        ]
+                                                        "type": ["null", "string"]
                                                     },
                                                     {
                                                         "name": "ST",
@@ -162,7 +159,7 @@ schema = {
                                     },
                                     {
                                         "name": "subject",
-                                        "type": "subject",
+                                        "type": "subject"
                                     }
                                 ]
                             }
