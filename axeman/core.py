@@ -54,7 +54,7 @@ async def download_worker(session, log_info, work_deque, download_queue):
                     break
             except Exception as e:
                 logging.error("Exception getting block {}-{}! {}".format(start, end, e))
-		time.sleep((2 ** x) + (random.randint(0, 1000) / 1000))
+                time.sleep((2 ** x) + (random.randint(0, 1000) / 1000))
         else:  # Notorious for else, if we didn't encounter a break our request failed 3 times D:
             with open('/tmp/fails.csv', 'a') as f:
                 f.write(",".join([log_info['url'], str(start), str(end)])+"\n")

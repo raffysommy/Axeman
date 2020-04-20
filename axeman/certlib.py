@@ -1,6 +1,6 @@
 import base64
 import math
-
+import logging
 import datetime
 from collections import OrderedDict
 
@@ -121,7 +121,6 @@ def add_all_domains(cert_data):
 
 def dump_cert(certificate):
     subject = certificate.get_subject()
-
     try:
         not_before = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'), "%Y%m%d%H%M%SZ").timestamp()
     except:
@@ -168,8 +167,15 @@ def dump_extensions(certificate):
 
 def serialize_certificate(certificate):
     subject = certificate.get_subject()
-    not_before_datetime = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'), "%Y%m%d%H%M%SZ")
-    not_after_datetime = datetime.datetime.strptime(certificate.get_notAfter().decode('ascii'), "%Y%m%d%H%M%SZ")
+    try:
+        not_before_datetime = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'), "%Y%m%d%H%M%SZ")
+    except:
+        not_before_datetime = datetime.datetime.fromtimestamp(0)
+    try:
+        not_after_datetime = datetime.datetime.strptime(certificate.get_notAfter().decode('ascii'), "%Y%m%d%H%M%SZ")
+    except:
+        not_after_datetime = datetime.datetime.fromtimestamp(0)
+
     return {
         "subject": {
             "aggregated": repr(certificate.get_subject())[18:-2],
