@@ -12,14 +12,15 @@ CTL_INFO = "http://{}/ct/v1/get-sth"
 
 DOWNLOAD = "http://{}/ct/v1/get-entries?start={}&end={}"
 
-from construct import Struct, Byte, Int16ub, Int64ub, Enum, Bytes, Int24ub, this, GreedyBytes, GreedyRange, Terminated, Embedded
+from construct import Struct, Byte, Int16ub, Int64ub, Enum, Bytes, Int24ub, this, GreedyBytes, GreedyRange, Terminated, \
+    Embedded
 
 MerkleTreeHeader = Struct(
-    "Version"         / Byte,
-    "MerkleLeafType"  / Byte,
-    "Timestamp"       / Int64ub,
-    "LogEntryType"    / Enum(Int16ub, X509LogEntryType=0, PrecertLogEntryType=1),
-    "Entry"           / GreedyBytes
+    "Version" / Byte,
+    "MerkleLeafType" / Byte,
+    "Timestamp" / Int64ub,
+    "LogEntryType" / Enum(Int16ub, X509LogEntryType=0, PrecertLogEntryType=1),
+    "Entry" / GreedyBytes
 )
 
 Certificate = Struct(
@@ -38,6 +39,7 @@ PreCertEntry = Struct(
     Terminated
 )
 
+
 async def retrieve_all_ctls(session=None):
     async with session.get(CTL_LISTS) as response:
         ctl_lists = await response.json()
@@ -52,15 +54,18 @@ async def retrieve_all_ctls(session=None):
 
         return logs
 
+
 def _get_owner(log, owners):
     owner_id = log['operated_by'][0]
     owner = next(x for x in owners if x['id'] == owner_id)
     return owner['name']
 
+
 async def get_max_block_size(log, session):
     async with session.get(DOWNLOAD.format(log['url'], 0, 10000)) as response:
         entries = await response.json()
         return len(entries['entries'])
+
 
 async def retrieve_log_info(log, session):
     block_size = await get_max_block_size(log, session)
@@ -70,6 +75,7 @@ async def retrieve_log_info(log, session):
         info['block_size'] = block_size
         info.update(log)
         return info
+
 
 async def populate_work(work_deque, log_info, start=0):
     tree_size = log_info['tree_size']
@@ -101,6 +107,7 @@ async def populate_work(work_deque, log_info, start=0):
 
         end = start + block_size + 1
 
+
 def add_all_domains(cert_data):
     all_domains = []
 
@@ -119,10 +126,12 @@ def add_all_domains(cert_data):
 
     return cert_data
 
+
 def dump_cert(certificate):
     subject = certificate.get_subject()
     try:
-        not_before = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'), "%Y%m%d%H%M%SZ").timestamp()
+        not_before = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'),
+                                                "%Y%m%d%H%M%SZ").timestamp()
     except:
         not_before = 0
 
@@ -147,6 +156,7 @@ def dump_cert(certificate):
         "as_der": base64.b64encode(crypto.dump_certificate(crypto.FILETYPE_ASN1, certificate)).decode('utf-8')
     }
 
+
 def dump_extensions(certificate):
     extensions = {}
     for x in range(certificate.get_extension_count()):
@@ -165,7 +175,11 @@ def dump_extensions(certificate):
                 pass
     return extensions
 
+
 def serialize_certificate(certificate):
+    if isinstance(certificate, dict):
+        if 'error' in certificate.keys() and certificate["error"] is True:
+            return serialize_broken_certificate(certificate["der"])
     subject = certificate.get_subject()
     try:
         not_before_datetime = datetime.datetime.strptime(certificate.get_notBefore().decode('ascii'), "%Y%m%d%H%M%SZ")
@@ -190,10 +204,32 @@ def serialize_certificate(certificate):
         "not_before": not_before_datetime.timestamp(),
         "not_after": not_after_datetime.timestamp(),
         "serial_number": '{0:x}'.format(int(certificate.get_serial_number())),
-        "fingerprint": str(certificate.digest("sha1"),'utf-8'),
+        "fingerprint": str(certificate.digest("sha1"), 'utf-8'),
         "as_der": base64.b64encode(
             crypto.dump_certificate(
                 crypto.FILETYPE_ASN1, certificate
             )
+        ).decode('utf-8')
+    }
+
+
+def serialize_broken_certificate(certificate):
+    return {
+        "subject": {
+            "aggregated": None,
+            "C": None,
+            "ST": None,
+            "L": None,
+            "O": None,
+            "OU": None,
+            "CN": None
+        },
+        "extensions": {},
+        "not_before": float('nan'),
+        "not_after": float('nan'),
+        "serial_number": "UNABLETODECODE",
+        "fingerprint": None,
+        "as_der": base64.b64encode(
+            certificate
         ).decode('utf-8')
     }
