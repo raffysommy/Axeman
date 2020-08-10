@@ -199,10 +199,18 @@ def process_worker(result_info):
 
             if mtl.LogEntryType == "X509LogEntryType":
                 cert_data['type'] = "X509LogEntry"
-                chain = [crypto.load_certificate(crypto.FILETYPE_ASN1, certlib.Certificate.parse(mtl.Entry).CertData)]
+                try:
+                    chain = [crypto.load_certificate(crypto.FILETYPE_ASN1, certlib.Certificate.parse(mtl.Entry).CertData)]
+                except:
+                    cert_err = {"error": True, "der": certlib.Certificate.parse(mtl.Entry).CertData}
+                    chain = [cert_err]
                 extra_data = certlib.CertificateChain.parse(base64.b64decode(entry['extra_data']))
                 for cert in extra_data.Chain:
-                    chain.append(crypto.load_certificate(crypto.FILETYPE_ASN1, cert.CertData))
+                     try:
+                         chain.append(crypto.load_certificate(crypto.FILETYPE_ASN1, cert.CertData))
+                     except:
+                         cert_err = {"error": True, "der": cert.CertData}
+                         chain.append(cert_err)
             else:
                 cert_data['type'] = "PreCertEntry"
                 extra_data = certlib.PreCertEntry.parse(base64.b64decode(entry['extra_data']))
